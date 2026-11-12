@@ -11,6 +11,11 @@ schedule.csv columns:
   media: comma-separated repo paths (carousel: slide_01.jpg,slide_02.jpg,...)
 """
 import csv, os, sys, datetime as dt, zoneinfo, traceback
+
+# secrets pasted with stray whitespace/newlines are common: normalise once
+for _k, _v in list(os.environ.items()):
+    if _k.endswith(("_TOKEN", "_SECRET", "_KEY", "_ID")) and _v != _v.strip():
+        os.environ[_k] = _v.strip()
 from pathlib import Path
 import requests
 
