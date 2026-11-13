@@ -6,10 +6,36 @@ Token lifetime: 60 days. publisher.main checks /userinfo and fails loudly when e
 import os, time, requests
 
 API = "https://api.linkedin.com"
-VERSION = "202410"
+import datetime as _dt
+
+def _pick_version():
+    """LinkedIn retires API versions after ~1 year; probe recent YYYYMM values once."""
+    env = os.environ.get("LINKEDIN_VERSION")
+    if env:
+        return env
+    today = _dt.date.today().replace(day=1)
+    cands = []
+    for i in range(1, 14):
+        y, m = today.year, today.month - i
+        while m <= 0:
+            y, m = y - 1, m + 12
+        cands.append(f"{y}{m:02d}")
+    tok = (os.environ.get("LINKEDIN_ACCESS_TOKEN") or "").strip()
+    for v in cands:
+        r = requests.get(f"{API}/rest/me", headers={"Authorization": f"Bearer {tok}", "LinkedIn-Version": v,
+                         "X-Restli-Protocol-Version": "2.0.0"}, timeout=30)
+        if r.status_code != 426:
+            print(f"LinkedIn-Version {v}")
+            return v
+    return cands[0]
+
+VERSION = None
 
 
 def _h(token, json=True):
+    global VERSION
+    if VERSION is None:
+        VERSION = _pick_version()
     h = {"Authorization": f"Bearer {token}", "LinkedIn-Version": VERSION, "X-Restli-Protocol-Version": "2.0.0"}
     if json:
         h["Content-Type"] = "application/json"
